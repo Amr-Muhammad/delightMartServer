@@ -9,8 +9,6 @@ app.use(cors());
 
 app.post('/create-checkout-session', async (req, res) => {
   try {
-    console.log(req);
-
     const { cartArray, userName, userEmail } = req.body;
 
     // Create a new Stripe Checkout session
@@ -22,20 +20,19 @@ app.post('/create-checkout-session', async (req, res) => {
           product_data: {
             name: product.english_name
           },
-          unit_amount: product.price  // Price in cents
+          unit_amount: product.price * 100
         },
-        quantity: 1
+        quantity: product.quantity
       })),
       mode: 'payment',
       success_url: 'http://localhost:8080/success',
       cancel_url: 'http://localhost:8080/cancel',
-      customer_email: userEmail, // Pass customer's email to pre-fill email field
+      customer_email: userEmail,
       metadata: {
-        customer_name: userName // Store customer's name as metadata
+        customer_name: userName
       }
     });
 
-    // Send the session ID to the frontend
     res.json({ id: session.id });
   } catch (error) {
     console.error('Error creating checkout session:', error);
