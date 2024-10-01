@@ -5,8 +5,16 @@ const cors = require('cors');
 const axios = require('axios');
 
 const app = express();
-app.use(cors());
 
+const corsOptions = {
+  origin: 'http://localhost:8080', // Allow your frontend origin
+  methods: 'GET,POST',
+  allowedHeaders: 'Content-Type',
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
