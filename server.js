@@ -28,8 +28,8 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
     const monthIndex = new Date().getMonth()
     const monthNames = [
-      "January", "February", "March", "April", "May", "June",
-      "July", "August", "September", "October", "November", "December"
+      "january", "february", "march", "april", "may", "june",
+      "july", "august", "september", "october", "november", "december"
     ]
     let PaymentType = session.metadata.paying_for
 
