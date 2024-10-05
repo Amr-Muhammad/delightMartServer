@@ -5,16 +5,8 @@ const cors = require('cors');
 const axios = require('axios');
 
 const app = express();
+app.use(cors());
 
-const corsOptions = {
-  origin: 'http://localhost:8080', // Allow your frontend origin
-  methods: 'GET,POST',
-  allowedHeaders: 'Content-Type',
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -34,30 +26,49 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       expand: ['line_items']
     });
 
-    const userId = session.metadata.user_id;
+    let PaymentType = session.metadata.paying_for
 
-    let userCart = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`)).data
+    if (PaymentType == 'cart') {
+      const userId = session.metadata.user_id;
 
-    const orderData = {
-      items: userCart,
-      total: session.amount_total / 100,
-      status: 'Processing',
-      createdAt: new Date().toISOString(),
-      customerName: session.metadata.customer_name,
-      customerEmail: session.customer_email
-    };
+      let userCart = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`)).data
 
-    try {
-      // Add the order to Firebase under the user's orders
-      const response = await axios.post(`https://dailymart-5c550-default-rtdb.firebaseio.com/orders/${userId}.json`, orderData);
-      if (response.status === 200) {
-        console.log('Order added successfully to Firebase');
-        await axios.delete(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`);
-      } else {
-        console.error('Failed to add order to Firebase');
+      const orderData = {
+        items: userCart,
+        total: session.amount_total / 100,
+        status: 'Processing',
+        createdAt: new Date().toISOString(),
+        customerName: session.metadata.customer_name,
+        customerEmail: session.customer_email
+      };
+
+
+      let month = new Date().getMonth() + 1
+
+      try {
+        // Add the order to Firebase under the user's orders
+        const response = await axios.post(`https://dailymart-5c550-default-rtdb.firebaseio.com/orders/${userId}.json`, orderData);
+        if (response.status === 200) {
+          await axios.delete(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`);
+          let oldSalesRevenue = await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}/salesRevenue.json`)
+
+          await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}.json`, { salesRevenue: oldSalesRevenue + session.amount_total / 100 })
+        } else {
+          console.error('Failed to add order to Firebase');
+        }
+      } catch (error) {
+        console.error('Error adding order to Firebase:', error);
       }
+    }
+  }
+
+  else {
+    try {
+      let oldSubscriptionsRevenue = await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}/salesRevenue.json`)
+
+      await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}.json`, { subscriptionsRevenue: oldSubscriptionsRevenue + 250 })
     } catch (error) {
-      console.error('Error adding order to Firebase:', error);
+      console.error('Error Patching the subscritpion revenue:', error);
     }
   }
 
@@ -109,6 +120,7 @@ app.post('/create-checkout-session', async (req, res) => {
       metadata: {
         customer_name: userName,
         user_id: userId,
+        paying_for: "cart"
         // cart: JSON.stringify(cartArray)
       }
     });
