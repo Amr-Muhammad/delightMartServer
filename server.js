@@ -26,6 +26,11 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       expand: ['line_items']
     });
 
+    const monthIndex = new Date().getMonth()
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December"
+    ]
     let PaymentType = session.metadata.paying_for
 
     if (PaymentType == 'cart') {
@@ -42,17 +47,13 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         customerEmail: session.customer_email
       };
 
-
-      let month = new Date().getMonth() + 1
-
       try {
-        // Add the order to Firebase under the user's orders
         const response = await axios.post(`https://dailymart-5c550-default-rtdb.firebaseio.com/orders/${userId}.json`, orderData);
         if (response.status === 200) {
           await axios.delete(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`);
-          let oldSalesRevenue = await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}/salesRevenue.json`)
+          let oldSalesRevenue = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}/salesRevenue.json`)).data
 
-          await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}.json`, { salesRevenue: oldSalesRevenue + session.amount_total / 100 })
+          await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}.json`, { salesRevenue: oldSalesRevenue + session.amount_total / 100 })
         } else {
           console.error('Failed to add order to Firebase');
         }
@@ -60,17 +61,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         console.error('Error adding order to Firebase:', error);
       }
     }
-  }
 
-  else {
-    try {
-      let oldSubscriptionsRevenue = await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}/salesRevenue.json`)
+    else {
+      try {
+        let oldSubscriptionsRevenue = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}/salesRevenue.json`)).data
 
-      await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${month}.json`, { subscriptionsRevenue: oldSubscriptionsRevenue + 250 })
-    } catch (error) {
-      console.error('Error Patching the subscritpion revenue:', error);
+        await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}.json`, { subscriptionsRevenue: oldSubscriptionsRevenue + 250 })
+      } catch (error) {
+        console.error('Error Patching the subscritpion revenue:', error);
+      }
     }
   }
+
 
   res.json({ received: true });
 });
