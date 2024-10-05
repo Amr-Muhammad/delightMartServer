@@ -64,7 +64,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
     else {
       try {
-        let oldSubscriptionsRevenue = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}/salesRevenue.json`)).data
+        let oldSubscriptionsRevenue = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}/subscriptionsRevenue.json`)).data
 
         await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}.json`, { subscriptionsRevenue: oldSubscriptionsRevenue + 250 })
       } catch (error) {
