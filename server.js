@@ -56,6 +56,38 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           let oldSalesRevenue = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}/salesRevenue.json`)).data
 
           await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}.json`, { salesRevenue: oldSalesRevenue + session.amount_total / 100 })
+
+
+
+          //a5od el cart mn el destruct bta3 el body w ab3to fi el meta data w a5do mn hnak
+          // async function updateCartAvailability(cartAvailabitiy) {
+          //   let updatePromises = cartAvailabitiy.map((item) => {
+          //     return axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/products/${item}.json`, {
+          //       availability: item
+          //     })
+          //       .then(res => {
+          //         return res
+          //       })
+          //       .catch(err => {
+          //         console.log(err);
+          //       });
+          //   });
+
+          //   try {
+          //     await Promise.all(updatePromises)
+          //   }
+          //   catch (err) {
+          //     console.log(err);
+          //   }
+          // }
+
+          // updateCartAvailability(cartAvailabitiy)
+
+
+
+
+
+
         } else {
           console.error('Failed to add order to Firebase');
         }
@@ -83,7 +115,7 @@ app.use(bodyParser.json());
 
 app.post('/create-checkout-session', async (req, res) => {
   try {
-    const { cartArray, userName, userEmail, userId, subscribed, customerPhoneNumber, location } = req.body;
+    const { cartArray, userName, userEmail, userId, subscribed, customerPhoneNumber, location, deliveryCharge } = req.body;
 
     let line_items = cartArray.map(product => ({
       price_data: {
@@ -106,7 +138,7 @@ app.post('/create-checkout-session', async (req, res) => {
           product_data: {
             name: 'Delivery Fee'
           },
-          unit_amount: 5000
+          unit_amount: deliveryCharge
         },
         quantity: 1
       });
@@ -127,7 +159,6 @@ app.post('/create-checkout-session', async (req, res) => {
         paying_for: "cart",
         customerPhoneNumber: customerPhoneNumber,
         location: location,
-        // cart: JSON.stringify(cartArray)
       }
     });
 
