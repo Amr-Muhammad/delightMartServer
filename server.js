@@ -44,7 +44,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         status: 'Processing',
         createdAt: new Date().toISOString(),
         customerName: session.metadata.customer_name,
-        customerEmail: session.customer_email
+        customerEmail: session.customer_email,
+        customerAddress: session.metadata.location,
+        customerPhoneNumber: session.metadata.customerPhoneNumber,
       };
 
       try {
@@ -81,7 +83,7 @@ app.use(bodyParser.json());
 
 app.post('/create-checkout-session', async (req, res) => {
   try {
-    const { cartArray, userName, userEmail, userId, subscribed } = req.body;
+    const { cartArray, userName, userEmail, userId, subscribed, customerPhoneNumber, location } = req.body;
 
     let line_items = cartArray.map(product => ({
       price_data: {
@@ -122,7 +124,9 @@ app.post('/create-checkout-session', async (req, res) => {
       metadata: {
         customer_name: userName,
         user_id: userId,
-        paying_for: "cart"
+        paying_for: "cart",
+        customerPhoneNumber: customerPhoneNumber,
+        location: location,
         // cart: JSON.stringify(cartArray)
       }
     });
