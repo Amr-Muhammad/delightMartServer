@@ -116,6 +116,7 @@ app.use(bodyParser.json());
 app.post('/create-checkout-session', async (req, res) => {
   try {
     const { cartArray, userName, userEmail, userId, subscribed, customerPhoneNumber, location, deliveryCharge } = req.body;
+    console.log(deliveryCharge);
 
     let line_items = cartArray.map(product => ({
       price_data: {
@@ -131,14 +132,15 @@ app.post('/create-checkout-session', async (req, res) => {
 
     }))
 
-    if (!subscribed) {
+
+    if (subscribed == undefined) {
       line_items.push({
         price_data: {
           currency: 'egp',
           product_data: {
             name: 'Delivery Fee'
           },
-          unit_amount: deliveryCharge
+          unit_amount: deliveryCharge * 100
         },
         quantity: 1
       });
