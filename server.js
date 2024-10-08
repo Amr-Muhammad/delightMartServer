@@ -32,11 +32,19 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       "july", "august", "september", "october", "november", "december"
     ]
     let PaymentType = session.metadata.paying_for
+    let weeklyOrder = session.metadata.weeklyOrder
 
     if (PaymentType == 'cart') {
       const userId = session.metadata.user_id;
 
-      let userCart = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`)).data
+      let userCart;
+      if (weeklyOrder == 'cart') {
+        userCart = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`)).data
+      }
+      else {
+        userCart = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/weeklyorders/${userId}.json`)).data
+      }
+
 
       const orderData = {
         items: userCart,
@@ -50,16 +58,40 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       };
 
       try {
-        const response = await axios.post(`https://dailymart-5c550-default-rtdb.firebaseio.com/orders/${userId}.json`, orderData);
-        if (response.status === 200) {
+        let response = '';
+
+        if (session.metadata.weeklyOrder == 'weekly') {
+          response = await axios.post(`https://dailymart-5c550-default-rtdb.firebaseio.com/weeklyordersOrders/${userId}.json`, orderData);
+          await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/users/customer/${userId}.json`, { orderStatus: 'Pending' });
+        }
+        else {
+          response = await axios.post(`https://dailymart-5c550-default-rtdb.firebaseio.com/orders/${userId}.json`, orderData);
           await axios.delete(`https://dailymart-5c550-default-rtdb.firebaseio.com/cart/${userId}.json`);
+        }
+        if (response.status === 200) {
           let oldSalesRevenue = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}/salesRevenue.json`)).data
 
           await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/profits/${monthNames[monthIndex]}.json`, { salesRevenue: oldSalesRevenue + session.amount_total / 100 })
 
+          let deliveryAddresses = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/users/customer/${userId}/deliveryAddresses.json`)).data
+          let customerAddress = (await axios.get(`https://dailymart-5c550-default-rtdb.firebaseio.com/users/customer/${userId}/address.json`)).data.location
+
+          if (customerAddress != session.metadata.location) {
+            if (deliveryAddresses == null) {
+              deliveryAddresses = []
+            }
+
+            deliveryAddresses.push(session.metadata.location)
+            deliveryAddresses = [...new Set(deliveryAddresses)]
+
+            await axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/users/customer/${userId}.json`, {
+              deliveryAddresses: deliveryAddresses
+            })
+          }
 
 
-          //a5od el cart mn el destruct bta3 el body w ab3to fi el meta data w a5do mn hnak
+
+          // a5od el cart mn el destruct bta3 el body w ab3to fi el meta data w a5do mn hnak
           // async function updateCartAvailability(cartAvailabitiy) {
           //   let updatePromises = cartAvailabitiy.map((item) => {
           //     return axios.patch(`https://dailymart-5c550-default-rtdb.firebaseio.com/products/${item}.json`, {
@@ -80,15 +112,11 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           //     console.log(err);
           //   }
           // }
-
           // updateCartAvailability(cartAvailabitiy)
 
 
-
-
-
-
-        } else {
+        }
+        else {
           console.error('Failed to add order to Firebase');
         }
       } catch (error) {
@@ -107,7 +135,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     }
   }
 
-
   res.json({ received: true });
 });
 
@@ -115,8 +142,7 @@ app.use(bodyParser.json());
 
 app.post('/create-checkout-session', async (req, res) => {
   try {
-    const { cartArray, userName, userEmail, userId, subscribed, customerPhoneNumber, location, deliveryCharge } = req.body;
-    console.log(deliveryCharge);
+    const { cartArray, userName, userEmail, userId, subscribed, customerPhoneNumber, location, deliveryCharge, weeklyOrder } = req.body;
 
     let line_items = cartArray.map(product => ({
       price_data: {
@@ -138,7 +164,7 @@ app.post('/create-checkout-session', async (req, res) => {
         price_data: {
           currency: 'egp',
           product_data: {
-            name: 'Delivery Fee'
+            name: 'Delivery Charge'
           },
           unit_amount: deliveryCharge * 100
         },
@@ -161,6 +187,7 @@ app.post('/create-checkout-session', async (req, res) => {
         paying_for: "cart",
         customerPhoneNumber: customerPhoneNumber,
         location: location,
+        weeklyOrder: weeklyOrder,
       }
     });
 
