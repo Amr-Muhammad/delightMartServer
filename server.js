@@ -178,7 +178,7 @@ app.post('/create-checkout-session', async (req, res) => {
 
       line_items: line_items,
       mode: 'payment',
-      success_url: 'http://localhost:8080/useraccount/myorders',
+      success_url: 'https://amr-muhammad.github.io/dailymart/#/useraccount/myorders',
       cancel_url: 'http://localhost:8080/homePage',
       customer_email: userEmail,
       metadata: {
